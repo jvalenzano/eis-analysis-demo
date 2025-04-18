@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+*.class
+venv/
+.env
+.pytest_cache/
+
+# JavaScript
+node_modules/
+npm-debug.log
+build/
+dist/
+.cache/
+
+# IDE files
+.vscode/
+.idea/
+.cursor/
+
+# GCP
+*-credentials.json
+*.json
+!package.json
+!tsconfig.json
+
+# Misc
+.DS_Store
