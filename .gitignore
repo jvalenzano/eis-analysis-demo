@@ -1,27 +1,29 @@
+# Environment variables
+.env
+
+# Python
 __pycache__/
 *.py[cod]
-*.class
+*.so
+.Python
 venv/
-.env
-.pytest_cache/
+ENV/
 
-# JavaScript
+# Node.js
 node_modules/
 npm-debug.log
-build/
+yarn-error.log
+
+# Build outputs
 dist/
-.cache/
+build/
 
 # IDE files
-.vscode/
 .idea/
-.cursor/
+.vscode/
+*.swp
+*.swo
 
-# GCP
-*-credentials.json
-*.json
-!package.json
-!tsconfig.json
-
-# Misc
+# OS files
 .DS_Store
+Thumbs.db
