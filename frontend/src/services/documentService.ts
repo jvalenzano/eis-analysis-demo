@@ -6,13 +6,26 @@ import { mockDocuments, mockPreview, mockAnalysisJob } from './__mocks__/mockDat
 
 // Base API URL - Reads from environment variable VITE_API_URL defined in .env files
 // Defaults to backend dev server if variable is not set.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 // Flag to control using mock data - Reads from VITE_USE_MOCK_DATA
 // Defaults to true for initial frontend development as per milestone doc
 const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true' || true;
 
-console.log(`Document Service: API_URL=${API_URL}, USE_MOCK_DATA=${USE_MOCK_DATA}`); // Log config on load
+console.log(`Document Service: API_BASE_URL=${API_BASE_URL}, USE_MOCK_DATA=${USE_MOCK_DATA}`); // Log config on load
+
+interface AnalysisJobResponse {
+  jobId: string;
+  status: string;
+  estimatedTimeSeconds?: number;
+  message?: string;
+}
+
+interface DocumentPreviewResponse {
+  previewUrl: string;
+  status: 'available' | 'processing' | 'error';
+  message?: string;
+}
 
 /**
  * Service for interacting with document-related API endpoints.
@@ -32,9 +45,9 @@ const documentService = {
       });
     }
 
-    console.log(`Fetching documents from: ${API_URL}/documents`);
+    console.log(`Fetching documents from: ${API_BASE_URL}/documents`);
     try {
-      const response = await axios.get<DocumentsResponse>(`${API_URL}/documents`);
+      const response = await axios.get<DocumentsResponse>(`${API_BASE_URL}/documents`);
       console.log('Received documents from API:', response.data);
       return response.data.documents || [];
     } catch (error) {
@@ -46,7 +59,7 @@ const documentService = {
   /**
    * Initiates document analysis on the backend or returns mock job info.
    */
-  async analyzeDocument(documentId: string): Promise<{ jobId: string; status: string; estimatedTimeSeconds: number }> {
+  async analyzeDocument(documentId: string): Promise<AnalysisJobResponse> {
     if (USE_MOCK_DATA) {
       console.log(`Using mock data for analyzeDocument (ID: ${documentId})`);
       return new Promise((resolve) => {
@@ -56,15 +69,13 @@ const documentService = {
       });
     }
 
-    console.log(`Sending analysis request for document ${documentId} to: ${API_URL}/analysis/process`);
+    console.log(`Sending analysis request for document ${documentId} to: ${API_BASE_URL}/documents/${documentId}/analyze`);
     try {
-      const response = await axios.post(`${API_URL}/analysis/process`, { documentId });
+      const response = await axios.post<AnalysisJobResponse>(
+        `${API_BASE_URL}/documents/${documentId}/analyze`
+      );
       console.log('Analysis job initiated:', response.data);
-      if (response.data && response.data.jobId) {
-          return response.data;
-      } else {
-          throw new Error("Invalid response format from analysis endpoint");
-      }
+      return response.data;
     } catch (error) {
       console.error('Error initiating document analysis:', error);
       throw error;
@@ -74,7 +85,7 @@ const documentService = {
   /**
    * Fetches a document preview, if available, or returns mock preview.
    */
-   async getDocumentPreview(documentId: string): Promise<{ preview_url: string; status: string; message?: string }> {
+  async getDocumentPreview(documentId: string): Promise<DocumentPreviewResponse> {
     if (USE_MOCK_DATA) {
       console.log(`Using mock data for getDocumentPreview (ID: ${documentId})`);
       return new Promise((resolve) => {
@@ -84,18 +95,40 @@ const documentService = {
       });
     }
 
-    console.log(`Fetching preview for document ${documentId} from: ${API_URL}/documents/${documentId}/preview`);
+    console.log(`Fetching preview for document ${documentId} from: ${API_BASE_URL}/documents/${documentId}/preview`);
     try {
-      const response = await axios.get(`${API_URL}/documents/${documentId}/preview`);
+      const response = await axios.get<DocumentPreviewResponse>(
+        `${API_BASE_URL}/documents/${documentId}/preview`
+      );
       console.log('Received preview info:', response.data);
-      return {
-          preview_url: response.data?.preview_url || '',
-          status: response.data?.status || 'error',
-          message: response.data?.message
-      };
+      return response.data;
     } catch (error) {
       console.error('Error fetching document preview:', error);
-       return { preview_url: '', status: 'error', message: 'Preview fetch failed.' };
+      throw new Error('Failed to fetch document preview');
+    }
+  },
+
+  /**
+   * Uploads a new document
+   */
+  async uploadDocument(file: File): Promise<Document> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await axios.post<Document>(
+        `${API_BASE_URL}/documents/upload`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      throw new Error('Failed to upload document');
     }
   }
 };

@@ -6,13 +6,16 @@ import { Document } from '../../types/document'; // Import type
 import { useDocuments } from '../../hooks/useDocuments'; // Import the custom hook
 import DocumentList from './DocumentList'; // Import list component
 import DocumentPreview from './DocumentPreview'; // Import preview component
+import DocumentUpload from './DocumentUpload';
+import ClassificationManager from '../classification/ClassificationManager';
+import WorkflowManager from '../workflow/WorkflowManager';
 
 // Define props expected by this component
 interface DocumentSelectorProps {
   // Callback function to notify parent when analysis job starts
   onAnalysisStarted: (jobId: string) => void;
   // Optional callback to propagate errors for global handling (e.g., Snackbar)
-  onError?: (message: string) => void; // Make optional for flexibility, though MainContent provides it
+  onError: (message: string) => void; // Make optional for flexibility, though MainContent provides it
 }
 
 /**
@@ -34,7 +37,8 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({
     analyzing, // Loading state for the analysis initiation call
     analysisJob, // Info about the submitted job
     selectDocument, // Function to select a document
-    analyzeSelectedDocument // Function to trigger analysis
+    analyzeSelectedDocument, // Function to trigger analysis
+    setDocuments
   } = useDocuments();
 
   // Local state to control whether the preview pane is visible
@@ -44,7 +48,7 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({
   // This useEffect hook watches the 'error' state from useDocuments
   useEffect(() => {
     // If there's an error message from the hook and an onError handler was provided
-    if (error && onError) {
+    if (error) {
        console.log("DocumentSelector: Propagating error up:", error);
       onError(error); // Call the parent's error handler (e.g., to show Snackbar)
     }
@@ -52,14 +56,14 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({
 
   // Handler when a document card is selected in the list
   const handleDocumentSelect = (document: Document) => {
-    selectDocument(document); // Update selection state via the hook
-    setShowPreview(false); // Hide preview when selecting from the list directly
+    selectDocument(document.id);
+    setShowPreview(false);
   };
 
   // Handler when the preview button on a card is clicked
   const handlePreviewDocument = (document: Document) => {
-    selectDocument(document); // Select the document first
-    setShowPreview(true); // Then show the preview pane
+    selectDocument(document.id);
+    setShowPreview(true);
   };
 
   // Handler for the main "Analyze Document" button
@@ -75,9 +79,19 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({
     // and propagated via the 'error' state variable and the useEffect above.
   };
 
+  const handleUploadSuccess = (newDocument: Document) => {
+    setDocuments(prevDocs => [...prevDocs, newDocument]);
+    selectDocument(newDocument.id);
+  };
+
   return (
-    // Use Paper for visual grouping
-    <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 4, borderRadius: 2 /* Softer corners */ }}> {/* Responsive padding */}
+    <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 4, borderRadius: 2 }}>
+      {/* Add DocumentUpload component at the top */}
+      <DocumentUpload
+        onUploadSuccess={handleUploadSuccess}
+        onError={onError}
+      />
+
       {/* Section Header */}
       <Box sx={{ mb: 3 }}>
         <Typography variant="h5" component="h2" gutterBottom>
@@ -137,7 +151,7 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({
       <Divider sx={{ my: 3 }} />
 
       {/* Action Button Area */}
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
         <Button
           variant="contained"
           color="primary"
@@ -152,6 +166,21 @@ const DocumentSelector: React.FC<DocumentSelectorProps> = ({
         </Button>
       </Box>
 
+      {/* Add WorkflowManager component */}
+      {selectedDocument && (
+        <WorkflowManager
+          documentId={selectedDocument.id}
+          onError={onError}
+        />
+      )}
+
+      {/* Add ClassificationManager component */}
+      {selectedDocument && (
+        <ClassificationManager
+          documentId={selectedDocument.id}
+          onError={onError}
+        />
+      )}
     </Paper>
   );
 };
